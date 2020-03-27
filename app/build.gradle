@@ -1,0 +1,40 @@
+apply plugin: 'com.android.application'
+
+def releaseAppName() {
+    return "FakeLocation"
+}
+
+android {
+    compileSdkVersion 28
+    defaultConfig {
+        applicationId "com.xposed.hook"
+        minSdkVersion 15
+        targetSdkVersion 23
+        versionCode 3
+        versionName "1.0.2"
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            applicationVariants.all {
+                variant ->
+                    variant.outputs.each {
+                        output -> output.outputFileName = "${releaseAppName()}_v${defaultConfig.versionName}.apk"
+                    }
+            }
+        }
+    }
+    lintOptions {
+        checkReleaseBuilds false
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+dependencies {
+    implementation 'com.android.support:appcompat-v7:28.0.0'
+    implementation 'com.android.support:design:28.0.0'
+    compileOnly 'de.robv.android.xposed:api:82'
+}
