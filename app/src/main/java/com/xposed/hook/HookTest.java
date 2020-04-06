@@ -5,8 +5,7 @@ import android.util.Log;
 import com.xposed.hook.config.Constants;
 import com.xposed.hook.config.PkgConfig;
 import com.xposed.hook.location.LocationHook;
-
-import com.xposed.hook.utils.RootCloak;
+import com.xposed.hook.wechat.LuckyMoneyHook;
 
 import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.XSharedPreferences;
@@ -21,7 +20,7 @@ public class HookTest implements IXposedHookLoadPackage {
     @Override
     public void handleLoadPackage(XC_LoadPackage.LoadPackageParam loadPackageParam) throws Throwable {
         Log.e(LocationHook.TAG, loadPackageParam.packageName);
-        new RootCloak().handleLoadPackage(loadPackageParam);
+        // LuckyMoneyHook.hook(loadPackageParam);
         XSharedPreferences preferences = new XSharedPreferences("com.xposed.hook", Constants.PREF_FILE_NAME);
         if (preferences.getBoolean(loadPackageParam.packageName, false)) {
             String defaultLatitude = Constants.DEFAULT_LATITUDE;
