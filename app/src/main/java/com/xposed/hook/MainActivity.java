@@ -47,13 +47,10 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        int id = item.getItemId();
-        if (id == R.id.item_luck_money) {
-            startActivity(new Intent(this, LuckMoneySetting.class));
-            return true;
-        } else {
-            return super.onOptionsItemSelected(item);
-        }
+     //   int id = item.getItemId();
+
+        return super.onOptionsItemSelected(item);
+
     }
 
     private static class MyAdapter extends BaseAdapter {

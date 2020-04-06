@@ -30,7 +30,7 @@
             </intent-filter>
         </activity>
         <activity android:name=".RimetActivity"></activity>
-        <activity android:name=".LuckMoneySetting"></activity>
+
     </application>
 
 </manifest>

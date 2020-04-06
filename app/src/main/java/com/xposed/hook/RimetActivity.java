@@ -29,6 +29,7 @@ import android.widget.Toast;
 import com.xposed.hook.config.Constants;
 import com.xposed.hook.config.PkgConfig;
 import com.xposed.hook.entity.AppInfo;
+import com.xposed.hook.utils.RootCloak;
 
 public class RimetActivity extends AppCompatActivity implements View.OnClickListener {
 
