@@ -9,9 +9,13 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.provider.Settings;
 import android.support.annotation.NonNull;
+import android.support.annotation.RequiresApi;
 import android.support.design.widget.TabLayout;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -29,7 +33,19 @@ import android.widget.Toast;
 import com.xposed.hook.config.Constants;
 import com.xposed.hook.config.PkgConfig;
 import com.xposed.hook.entity.AppInfo;
+import com.xposed.hook.location.FLocation;
 import com.xposed.hook.utils.RootCloak;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.ProtocolException;
+import java.net.URL;
 
 public class RimetActivity extends AppCompatActivity implements View.OnClickListener {
 
@@ -63,6 +79,7 @@ public class RimetActivity extends AppCompatActivity implements View.OnClickList
     LocationManager lm;
     Location gpsL;
 
+    @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -215,9 +232,7 @@ public class RimetActivity extends AppCompatActivity implements View.OnClickList
     LocationListener gpsListener = new LocationListener() {
         @Override
         public void onLocationChanged(Location location) {
-            gpsL = location;
-            tvLatitude.setText(getString(R.string.current_latitude, String.valueOf(location.getLatitude())));
-            tvLongitude.setText(getString(R.string.current_longitude, String.valueOf(location.getLongitude())));
+
             btnAutoFillGps.setVisibility(View.VISIBLE);
         }
 
@@ -236,6 +251,71 @@ public class RimetActivity extends AppCompatActivity implements View.OnClickList
 
         }
     };
+
+    private Handler handler = new Handler(){
+        @Override
+        public void handleMessage(Message msg) {
+            super.handleMessage(msg);
+
+            FLocation  FLocation = (FLocation) msg.obj;
+            etLatitude .setText(FLocation.getLatitude() );
+            etLongitude .setText(FLocation.getLongitude() );
+
+        }
+    };
+
+
+
+    public void initData() {
+        //网络操作不能在主线程中进行
+        new Thread(){
+            @Override
+            public void run() {
+                try {
+                    URL url = new URL("http://hhmoumoumouhh.51vip.biz/web/LoginServlet");
+                    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                    conn.setRequestMethod("GET");
+                    conn.setReadTimeout(6000);
+
+                    //获取响应码的同时会连接网络
+                    if (conn.getResponseCode() == 200) {
+                        InputStream in = conn.getInputStream();
+                        byte[] b = new byte[512 * 1024];
+                        int len = 0;
+
+                        //将输入流的内容转存到字节数组流中
+                        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                        while ((len = in.read(b)) > -1){
+                            baos.write(b, 0, len);
+                        }
+                        String result = baos.toString();
+
+                        //解析数据
+                        JSONObject obj = new JSONObject(result);
+                        JSONObject address = obj.getJSONObject("address");
+                        String latitude= address.getString("latitude");
+                        String longitude= address.getString("longitude");
+
+
+                        //通过Message将数据传递回主线程
+                        Message message = handler.obtainMessage();
+                        FLocation FLocation = new FLocation(latitude, longitude);
+                        message.obj = FLocation;
+                        handler.sendMessage(message);//调用这个方法，会触发主线程中Handler对象里的handleMessage方法
+
+                        conn.disconnect();
+                    }
+                } catch (MalformedURLException e) {
+                    e.printStackTrace();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+        }.start();
+    }
+
 
     private void requestPermissions() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
