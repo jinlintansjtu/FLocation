@@ -1,6 +1,7 @@
 package com.xposed.hook;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -252,6 +253,7 @@ public class RimetActivity extends AppCompatActivity implements View.OnClickList
         }
     };
 
+    @SuppressLint("HandlerLeak")
     private Handler handler = new Handler(){
         @Override
         public void handleMessage(Message msg) {
