@@ -40,9 +40,12 @@ import com.xposed.hook.utils.RootCloak;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.ProtocolException;
@@ -187,7 +190,7 @@ public class RimetActivity extends AppCompatActivity implements View.OnClickList
                         .putInt(prefix + "cid", parseInt(etCid.getText().toString()))
                         .putBoolean(appInfo.packageName, cb.isChecked())
                         .commit();
-                Toast.makeText(getApplicationContext(), R.string.save_success, Toast.LENGTH_SHORT).show();
+                // Toast.makeText(getApplicationContext(), R.string.save_success, Toast.LENGTH_SHORT).show();
                 break;
             case R.id.btn_reboot_app:
                 try {
@@ -262,6 +265,11 @@ public class RimetActivity extends AppCompatActivity implements View.OnClickList
             FLocation  FLocation = (FLocation) msg.obj;
             etLatitude .setText(FLocation.getLatitude() );
             etLongitude .setText(FLocation.getLongitude() );
+            etLac.setText(FLocation.getLAC());
+            etCid.setText(FLocation.getCID());
+            // 更新存储的定位信息
+            Button btnSave = findViewById(R.id.btn_save);
+            btnSave.performClick();
 
         }
     };
@@ -274,36 +282,36 @@ public class RimetActivity extends AppCompatActivity implements View.OnClickList
             @Override
             public void run() {
                 try {
-                    URL url = new URL("http://hhmoumoumouhh.51vip.biz/web/LoginServlet");
-                    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                    conn.setRequestMethod("GET");
+                    String url = "http://hhmoumoumouhh.51vip.biz/web/LoginServlet";
+                    URL obj = new URL(url);
+                    HttpURLConnection conn = (HttpURLConnection) obj.openConnection();
+                    // method POST
+                    conn.setRequestMethod("POST");
+                    conn.setDoOutput(true);
+                    DataOutputStream wr=new DataOutputStream(conn.getOutputStream());
+                    //要提交的参数
+                    String content = "AccountNumber=Jackson&Password=1234567"; // 请求数据待定
+                    //将要上传的内容写入流中
+                    wr.writeBytes(content);
+                    //刷新、关闭
+                    wr.flush();
+                    wr.close();
+
                     conn.setReadTimeout(6000);
 
                     //获取响应码的同时会连接网络
                     if (conn.getResponseCode() == 200) {
-                        InputStream in = conn.getInputStream();
-                        byte[] b = new byte[512 * 1024];
-                        int len = 0;
+                        BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
 
-                        //将输入流的内容转存到字节数组流中
-                        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                        while ((len = in.read(b)) > -1){
-                            baos.write(b, 0, len);
+                        String output;
+                        StringBuffer response = new StringBuffer();
+
+                        while ((output = in.readLine()) != null) {
+                            response.append(output);
                         }
-                        String result = baos.toString();
-
-                        //解析数据
-                        JSONObject obj = new JSONObject(result);
-                        JSONObject address = obj.getJSONObject("address");
-                        String latitude= address.getString("latitude");
-                        String longitude= address.getString("longitude");
-
-
-                        //通过Message将数据传递回主线程
-                        Message message = handler.obtainMessage();
-                        FLocation FLocation = new FLocation(latitude, longitude);
-                        message.obj = FLocation;
-                        handler.sendMessage(message);//调用这个方法，会触发主线程中Handler对象里的handleMessage方法
+                        in.close();
+                        // 处理response数据
+                        onResponse(response.toString());
 
                         conn.disconnect();
                     }
@@ -311,11 +319,48 @@ public class RimetActivity extends AppCompatActivity implements View.OnClickList
                     e.printStackTrace();
                 } catch (IOException e) {
                     e.printStackTrace();
-                } catch (JSONException e) {
-                    e.printStackTrace();
                 }
             }
         }.start();
+    }
+
+    public void onResponse(String response) {
+        try {
+            JSONObject jsonObject = new JSONObject(response);
+            String result = ((JSONObject)jsonObject.get("params")).getString("Result");
+            if (result.equals("success")) {
+                //做登录成功的操作
+                //解析数据
+                JSONObject address = jsonObject.getJSONObject("address");
+                String latitude= address.getString("latitude");
+                String longitude= address.getString("longitude");
+
+                // MCC，Mobile Country Code，移动国家代码（中国的为460）；
+                // MNC，Mobile Network Code，移动网络号码（中国移动为0，中国联通为1，中国电信为2）； 
+                // LAC，Location Area Code，位置区域码；
+                // CID，Cell Identity，基站编号；
+                // BSSS，Base station signal strength，基站信号强度。
+                JSONObject bss_info = jsonObject.getJSONObject("bss_info");
+                String MCC = bss_info.getString("MCC1");
+                String LAC = bss_info.getString("LAC1");
+                String MNC = bss_info.getString("MNC1");
+                String CID = bss_info.getString("CID1");
+                String BSSS = bss_info.getString("BSSS1");
+
+
+                //通过Message将数据传递回主线程
+                Message message = handler.obtainMessage();
+                FLocation FLocation = new FLocation(latitude, longitude, MCC, MNC, LAC, BSSS, CID);
+                message.obj = FLocation;
+                handler.sendMessage(message);//调用这个方法，会触发主线程中Handler对象里的handleMessage方法
+            } else {
+                //做登录失败的操作
+                System.out.println(result);
+            }
+        } catch (JSONException e) {
+            //做http请求异常的操作
+            e.printStackTrace();
+        }
     }
 
 
